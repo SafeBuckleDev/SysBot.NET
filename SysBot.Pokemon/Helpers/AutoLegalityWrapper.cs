@@ -189,6 +189,16 @@ public static class AutoLegalityWrapper
             LegalizationResult.VersionMismatch => "VersionMismatch",
             _ => "",
         };
+
+        // Auto-set shiny if legal and not overwritten by trade command.
+        if (set is RegenTemplate rt && !rt.SetText.Contains("Shiny:"))
+        {
+            var pkm = result.Created;
+            var legality = new LegalityAnalysis(pkm);
+            if (legality.ValidShiny)
+                pkm.SetShiny();
+        }
+
         return result.Created;
     }
 
