@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static SysBot.Base.SwitchButton;
 using static SysBot.Pokemon.PokeDataOffsetsLZA;
+using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 
@@ -262,7 +263,7 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
             pokedexNum = toSend.Species,
             pokemonName = GameInfo.Strings.Species[toSend.Species],
             isShiny = toSend.IsShiny,
-            queueCount = Hub.Queues.Count
+            queueCount = 0
         });
 
 
@@ -616,7 +617,7 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
         {
             state = "enteringCode",
             code = code,
-            queueCount = Hub.Queues.Count
+            queueCount = 0
         });
 
         var (valid, _) = await ValidatePointerAll(Offsets.LinkTradeCodePointer, token).ConfigureAwait(false);
