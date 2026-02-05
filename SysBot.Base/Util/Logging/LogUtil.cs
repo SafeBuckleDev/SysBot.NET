@@ -18,7 +18,9 @@ public static class LogUtil
         if (!LogConfig.LoggingEnabled)
             return;
 
-        var config = new LoggingConfiguration();
+        return; // no logging
+
+        /*var config = new LoggingConfiguration();
         Directory.CreateDirectory("logs");
         var WorkingDirectory = Path.GetDirectoryName(Environment.ProcessPath)!;
         var logfile = new FileTarget("logfile")
@@ -36,7 +38,7 @@ public static class LogUtil
             WriteBom = true,
         };
         config.AddRule(LogLevel.Debug, LogLevel.Fatal, logfile);
-        LogManager.Configuration = config;
+        LogManager.Configuration = config;*/
     }
 
     private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
