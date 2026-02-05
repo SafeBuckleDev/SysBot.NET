@@ -181,7 +181,6 @@ public static class AutoLegalityWrapper
     public static PKM GetLegal(this ITrainerInfo sav, IBattleTemplate set, out string res)
     {
         var result = sav.GetLegalFromSet(set);
-
         res = result.Status switch
         {
             LegalizationResult.Regenerated     => "Regenerated",
@@ -190,24 +189,8 @@ public static class AutoLegalityWrapper
             LegalizationResult.VersionMismatch => "VersionMismatch",
             _ => "",
         };
-
-        var pkm = result.Created;
-
-        // Auto shiny if user didn't specify
-        if (set is ShowdownSet ss && !ss.Text.Contains("Shiny:"))
-        {
-            pkm.SetShiny();
-            pkm = pkm.LegalizePokemon();
-        }
-
-        // Block illegal trades
-        if (!new LegalityAnalysis(pkm).Valid)
-            throw new InvalidOperationException("Illegal Pokémon blocked from trade.");
-
-        return pkm;
+        return result.Created;
     }
-
-
 
     public static string GetLegalizationHint(IBattleTemplate set, ITrainerInfo sav, PKM pk) => set.SetAnalysis(sav, pk);
     public static PKM LegalizePokemon(this PKM pk) => pk.Legalize();
