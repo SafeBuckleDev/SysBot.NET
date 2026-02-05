@@ -8,6 +8,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using static SysBot.Base.SwitchButton;
 using static SysBot.Pokemon.PokeDataOffsetsLZA;
+using System.Text;
+using System.Text.Json;
 
 namespace SysBot.Pokemon;
 
@@ -65,6 +67,7 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
 
             Log($"Starting main {nameof(PokeTradeBotLZA)} loop.");
             await InnerLoop(sav, token).ConfigureAwait(false);
+            await ConnectWebSocket();
         }
         catch (OperationCanceledException)
         {
@@ -77,6 +80,19 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
 
         Log($"Ending {nameof(PokeTradeBotLZA)} loop.");
         await HardStop().ConfigureAwait(false);
+    }
+
+    private async Task ConnectWebSocket()
+    {
+        try
+        {
+            if (_ws.State == WebSocketState.Open)
+                return;
+
+            _ws = new ClientWebSocket();
+            await _ws.ConnectAsync(new Uri("ws://localhost:5001/ws"), CancellationToken.None);
+        }
+        catch { }
     }
 
     public override Task HardStop()
@@ -241,6 +257,15 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
         }
 
         var toSend = poke.TradeData;
+        await SendLiveUpdate(new {
+            state = "preparingTrade",
+            pokedexNum = toSend.Species,
+            pokemonName = GameInfo.Strings.Species[toSend.Species],
+            isShiny = toSend.IsShiny,
+            queueCount = Hub.Queues.Count
+        });
+
+
         if (toSend.Species != 0)
             await SetBoxPokemonAbsolute(BoxStartOffset, toSend, token, sav).ConfigureAwait(false);
 
@@ -587,6 +612,13 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
     // Otherwise, we should be able to see if it's the same and how long it is.
     private async Task EnterLinkCodeLZA(int code, CancellationToken token)
     {
+        await SendLiveUpdate(new
+        {
+            state = "enteringCode",
+            code = code,
+            queueCount = Hub.Queues.Count
+        });
+
         var (valid, _) = await ValidatePointerAll(Offsets.LinkTradeCodePointer, token).ConfigureAwait(false);
         if (!valid)
         {
@@ -892,5 +924,23 @@ public class PokeTradeBotLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : PokeR
             Hub.BotSync.Barrier.RemoveParticipant();
             Log($"Left the Barrier. Count: {Hub.BotSync.Barrier.ParticipantCount}");
         }
+    }
+
+    private static ClientWebSocket _ws = new();
+
+
+    private async Task SendLiveUpdate(object payload)
+    {
+        try
+        {
+            if (_ws.State != WebSocketState.Open)
+                await ConnectWebSocket();
+
+            var json = JsonSerializer.Serialize(payload);
+            var bytes = Encoding.UTF8.GetBytes(json);
+
+            await _ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+        catch { }
     }
 }
