@@ -458,9 +458,6 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
 
         await SendLiveUpdate(new {
             state = "tradeComplete",
-            pokedexNum = received.Species,
-            pokemonName = GameInfo.Strings.Species[received.Species],
-            isShiny = received.IsShiny,
             queueCount = 0
         });
 
