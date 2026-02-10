@@ -8,6 +8,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using static SysBot.Base.SwitchButton;
 using static SysBot.Pokemon.PokeDataOffsetsSV;
+using System.Net.WebSockets;
+using System.Text;
+using System.Text.Json;
 
 namespace SysBot.Pokemon;
 
@@ -85,6 +88,37 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
         Log($"Ending {nameof(PokeTradeBotSV)} loop.");
         await HardStop().ConfigureAwait(false);
     }
+
+    private static ClientWebSocket _ws = new();
+
+    private async Task ConnectWebSocket()
+    {
+        try
+        {
+            if (_ws.State == WebSocketState.Open)
+                return;
+
+            _ws = new ClientWebSocket();
+            await _ws.ConnectAsync(new Uri("ws://localhost:5001/ws"), CancellationToken.None);
+        }
+        catch { }
+    }
+
+    private async Task SendLiveUpdate(object payload)
+    {
+        try
+        {
+            if (_ws.State != WebSocketState.Open)
+                await ConnectWebSocket();
+
+            var json = JsonSerializer.Serialize(payload);
+            var bytes = Encoding.UTF8.GetBytes(json);
+
+            await _ws.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+        }
+        catch { }
+    }
+
 
     public override Task HardStop()
     {
@@ -243,6 +277,17 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
         }
 
         var toSend = poke.TradeData;
+
+        // sends update to websocket for live display on website
+        await SendLiveUpdate(new {
+            state = "preparingTrade",
+            pokedexNum = toSend.Species,
+            pokemonName = GameInfo.Strings.Species[toSend.Species],
+            isShiny = toSend.IsShiny,
+            queueCount = 0
+        });
+
+
         if (toSend.Species != 0)
             await SetBoxPokemonAbsolute(BoxStartOffset, toSend, token, sav).ConfigureAwait(false);
 
@@ -260,6 +305,15 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
             if (poke.Type != PokeTradeType.Random)
                 Hub.Config.Stream.StartEnterCode(this);
             await Task.Delay(Hub.Config.Timings.ExtraTimeOpenCodeEntry, token).ConfigureAwait(false);
+
+            await SendLiveUpdate(new {
+                state = "enteringCode",
+                pokedexNum = toSend.Species,
+                pokemonName = GameInfo.Strings.Species[toSend.Species],
+                isShiny = toSend.IsShiny,
+                queueCount = 0
+            });
+
 
             var code = poke.Code;
             Log($"Entering Link Trade code: {code:0000 0000}...");
@@ -401,6 +455,15 @@ public class PokeTradeBotSV(PokeTradeHub<PK9> Hub, PokeBotState Config) : PokeRo
         // As long as we got rid of our inject in b1s1, assume the trade went through.
         Log("User completed the trade.");
         poke.TradeFinished(this, received);
+
+        await SendLiveUpdate(new {
+            state = "tradeComplete",
+            pokedexNum = received.Species,
+            pokemonName = GameInfo.Strings.Species[received.Species],
+            isShiny = received.IsShiny,
+            queueCount = 0
+        });
+
 
         // Only log if we completed the trade.
         UpdateCountsAndExport(poke, received, toSend);
