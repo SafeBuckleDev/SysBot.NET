@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -23,8 +24,8 @@ public interface ISwitchConnectionAsync : IConsoleConnectionAsync
     Task<byte[]> ReadBytesAbsoluteMultiAsync(IReadOnlyDictionary<ulong, int> offsetSize, CancellationToken token);
     Task<byte[]> ReadBytesMainMultiAsync(IReadOnlyDictionary<ulong, int> offsetSize, CancellationToken token);
 
-    Task WriteBytesMainAsync(byte[] data, ulong offset, CancellationToken token);
-    Task WriteBytesAbsoluteAsync(byte[] data, ulong offset, CancellationToken token);
+    Task WriteBytesMainAsync(Span<byte> data, ulong offset, CancellationToken token);
+    Task WriteBytesAbsoluteAsync(Span<byte> data, ulong offset, CancellationToken token);
 
     Task<byte[]> ReadRaw(byte[] command, int length, CancellationToken token);
     Task SendRaw(byte[] command, CancellationToken token);
@@ -33,4 +34,6 @@ public interface ISwitchConnectionAsync : IConsoleConnectionAsync
     Task PointerPoke(byte[] data, IEnumerable<long> jumps, CancellationToken token);
     Task<ulong> PointerAll(IEnumerable<long> jumps, CancellationToken token);
     Task<ulong> PointerRelative(IEnumerable<long> jumps, CancellationToken token);
+    Task<(bool Success, T Value)> TryReadMain<T>(ulong offset, CancellationToken token) where T : unmanaged;
+    Task<(bool Success, T Value)> TryReadAbsolute<T>(ulong offset, CancellationToken token) where T : unmanaged;
 }
